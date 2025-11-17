@@ -1,0 +1,69 @@
+package com.optic.apirest.services;
+
+
+import com.optic.apirest.dto.cliente.ClienteRequest;
+import com.optic.apirest.dto.cliente.ClienteResponse;
+import com.optic.apirest.dto.cliente.mappers.ClienteMapper;
+import com.optic.apirest.models.Cliente;
+import com.optic.apirest.respositories.ClienteRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class ClienteService {
+
+    private final ClienteRepository clienteRepository;
+    private final ClienteMapper clienteMapper ;
+
+    // Inyección por constructor (mejor práctica)
+    public ClienteService(ClienteRepository clienteRepository , ClienteMapper clienteMapper) {
+        this.clienteRepository = clienteRepository;
+        this.clienteMapper = clienteMapper;
+    }
+
+    @Transactional
+    public void create(ClienteRequest request) {
+        Cliente cliente = clienteMapper.toEntity(request);
+        clienteRepository.save(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponse findById(Long id) {
+        Cliente cliente = clienteRepository.findById(id).orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + id));
+        return clienteMapper.toResponse(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClienteResponse> findAll(String query) {
+    List<Cliente> clientes;
+
+        if (query != null && !query.isBlank()) {
+            clientes = clienteRepository.findByNombreCompletoContainingIgnoreCaseOrDocumentoIdentidadContainingIgnoreCase(query, query);
+        } else {
+            clientes = clienteRepository.findAll();
+        }
+
+        return clientes.stream()//stream es para trabajar con colecciones de datos nos permite aplicar operaciones funcionales como map, filter, reduce, etc.
+                .map(clienteMapper::toResponse)
+                .collect(Collectors.toList()); //esto es para convertir la lista de entidades a lista de responses nos sirve para evitar codigo repetitivo
+    }
+    @Transactional
+    public void update(Long id, ClienteRequest request) {
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + id));
+
+        clienteMapper.updateEntity(cliente,  request);
+        clienteRepository.save(cliente);
+    }
+    @Transactional
+    public void delete(Long id) {
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + id));
+        clienteRepository.delete(cliente);
+    }
+
+}
