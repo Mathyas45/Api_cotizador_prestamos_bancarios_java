@@ -35,7 +35,7 @@ public class TasaInteresApiClient {
                     // Extraemos los datos
                     ValidacionResponse result = new ValidacionResponse();
                     result.setDni(data.getString("dni"));
-                    result.setRiesgo(Double.parseDouble(data.getString("riesgo")));
+                    result.setRiesgo(data.getInt("riesgo"));
                     result.setResultadoValidacion(data.getString("resultado_validacion"));
 
                     System.out.println("✅ API Mock obtenida para DNI " + dni + ": Riesgo " + result.getRiesgo() + ", Resultado " + result.getResultadoValidacion());
@@ -49,7 +49,7 @@ public class TasaInteresApiClient {
         // Si falla la consulta, devolvemos un objeto por defecto
         ValidacionResponse fallback = new ValidacionResponse();
         fallback.setDni(dni);
-        fallback.setRiesgo(3.0); // riesgo alto
+        fallback.setRiesgo(3); // Riesgo alto por defecto
         fallback.setResultadoValidacion("RECHAZADO");
         return fallback;
     }

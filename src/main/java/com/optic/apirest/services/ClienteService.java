@@ -26,9 +26,18 @@ public class ClienteService {
     }
 
     @Transactional
-    public void create(ClienteRequest request) {
+    public ClienteResponse create(ClienteRequest request) {
         Cliente cliente = clienteMapper.toEntity(request);
-        clienteRepository.save(cliente);
+
+        // Verificar si el cliente ya existe por documentoIdentidad
+        Cliente clienteExistente = clienteRepository.findClienteByDocumentoIdentidad(cliente.getDocumentoIdentidad());
+        if (clienteExistente != null) {
+            // Si el cliente ya existe, devolver su información
+            return clienteMapper.toResponse(clienteExistente);
+        }
+        // Si el cliente no existe, guardarlo y devolver su información
+        Cliente nuevoCliente = clienteRepository.save(cliente);
+        return  clienteMapper.toResponse(nuevoCliente);
     }
 
     @Transactional(readOnly = true)

@@ -46,6 +46,9 @@ public class SolicitudPrestamo {
     @Column(name = "motivo_rechazo", length = 1000, nullable = true)
     private String motivoRechazo;
 
+    @Column(name = "riesgo_cliente", nullable = true)
+    private Integer riesgoCliente;
+
     @Comment("Estado de la solicitud: 0 - Pendiente, 1 - Aprobado, 2 - Rechazado")
     @Column(nullable = true)
     private Integer estado; // 0: Pendiente, 1: Aprobado, 2: Rechazado

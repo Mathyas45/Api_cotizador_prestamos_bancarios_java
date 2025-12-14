@@ -1,19 +1,28 @@
 package com.optic.apirest.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Clase para estructurar las respuestas de la API.
+ * Clase genérica para estructurar las respuestas de la API.
+ * 
+ * @param <T> Tipo de dato que contendrá la respuesta
+ * 
+ * Ejemplo de uso:
+ * ApiResponse<ClienteResponse> response = ApiResponse.<ClienteResponse>builder()
+ *     .success(true)
+ *     .message("Cliente encontrado")
+ *     .data(clienteResponse)
+ *     .build();
  */
-@Data //esto genera getters y setters automáticamente
-@AllArgsConstructor // Genera un constructor con todos los campos
-@NoArgsConstructor  // Genera un constructor vacío que nos sirve para crear instancias sin parámetros, por ejemplo al deserializar JSON o XML, o cuando queremos crear un objeto y luego establecer sus propiedades.
-
-public class ApiResponse {
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class ApiResponse<T> {
+    private boolean success;
     private String message;
-    private int code;
-
-
+    private T data;
 }

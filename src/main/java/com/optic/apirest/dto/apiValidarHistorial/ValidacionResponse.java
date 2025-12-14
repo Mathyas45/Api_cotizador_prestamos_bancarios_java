@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ValidacionResponse {
     private String dni;
-    private Double riesgo;
+    private Integer riesgo;
     private String resultadoValidacion;
 }

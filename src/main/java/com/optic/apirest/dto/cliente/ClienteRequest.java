@@ -17,7 +17,6 @@ public class ClienteRequest {
     @Size(max = 20, message = "El documento de identidad no puede exceder 20 caracteres")
     public String documentoIdentidad;
 
-    @NotBlank(message = "El email es obligatorio")
     @Size(max = 255, message = "El email no puede exceder 255 caracteres")
     public String email;
 

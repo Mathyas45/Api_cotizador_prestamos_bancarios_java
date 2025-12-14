@@ -22,10 +22,10 @@ public class Cliente {
     @Column(name="documento_identidad" , length = 20, nullable = false)
     private String documentoIdentidad;
 
-    @Column(length = 255, nullable = false)
+    @Column(length = 255, nullable = true)
     private String email;
 
-    @Column(length = 20, nullable = true)
+    @Column(length = 20, nullable = false)
     private String telefono;
 
     @Column(name = "ingreso_mensual", length = 500, nullable = true, precision = 10, scale = 2)

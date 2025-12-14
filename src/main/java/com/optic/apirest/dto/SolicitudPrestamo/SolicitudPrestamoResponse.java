@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-
+import java.time.LocalDateTime;
 
 @Data // Genera automáticamente getters, setters, toString, equals y hashCode
 @NoArgsConstructor //esto es para que el constructor por defecto sea visible
@@ -24,7 +24,9 @@ public class SolicitudPrestamoResponse {
     public BigDecimal tcea;
     public BigDecimal cuotaMensual;
     public String motivoRechazo;
+    public Integer riesgoCliente;
     public Integer estado;
+    public LocalDateTime createdAt;
     private ClienteResponse cliente;
 
 }

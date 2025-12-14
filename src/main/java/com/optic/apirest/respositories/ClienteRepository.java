@@ -14,6 +14,8 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     @Query("SELECT c.documentoIdentidad FROM Cliente c WHERE c.id = :id")
     String findDocumentoIdentidadById(Long id);
 
+    Cliente findClienteByDocumentoIdentidad(String documentoIdentidad);
+
     List<Cliente> findByNombreCompletoContainingIgnoreCaseOrDocumentoIdentidadContainingIgnoreCase(String nombreCompleto, String documentoIdentidad); //buscar por nombre o apellido ignorando mayusculas y minusculas
 
 }

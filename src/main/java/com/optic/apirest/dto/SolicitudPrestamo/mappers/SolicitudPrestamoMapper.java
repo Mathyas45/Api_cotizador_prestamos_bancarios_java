@@ -38,7 +38,31 @@ public class SolicitudPrestamoMapper {
         response.setCuotaMensual(solicitud.getCuotaMensual());
         response.setEstado(solicitud.getEstado());
         response.setMotivoRechazo(solicitud.getMotivoRechazo());
+        response.setRiesgoCliente(solicitud.getRiesgoCliente());
+        response.setCreatedAt(solicitud.getCreatedAt());
         response.setCliente(clienteMapper.toResponse(solicitud.getCliente()));
         return response;
     }
+
+    public SolicitudPrestamoResponse toResponseCotizacion(SolicitudPrestamo solicitud) {
+        SolicitudPrestamoResponse response = new SolicitudPrestamoResponse();//esto sirve para crear una nueva instancia de la clase SolicitudPrestamoResponse, la instancia es un objeto que representa la respuesta de la solicitud de prestamo en el sistema
+        if (solicitud.getCliente() != null) {
+            response.setCliente(clienteMapper.toResponse(solicitud.getCliente()));
+        }
+        response.setMonto(solicitud.getMonto());
+        response.setPlazoAnios(solicitud.getPlazoAnios());
+        response.setPorcentajeCuotaInicial(solicitud.getPorcentajeCuotaInicial());
+        response.setTasaInteres(solicitud.getTasaInteres());
+        response.setTcea(solicitud.getTcea());
+        response.setMontoCuotaInicial(solicitud.getMontoCuotaInicial());
+        response.setMontoFinanciar(solicitud.getMontoFinanciar());
+        response.setCuotaMensual(solicitud.getCuotaMensual());
+        response.setEstado(solicitud.getEstado());
+        response.setMotivoRechazo(solicitud.getMotivoRechazo());
+        response.setRiesgoCliente(solicitud.getRiesgoCliente());
+        response.setCreatedAt(solicitud.getCreatedAt());
+        response.setCliente(clienteMapper.toResponse(solicitud.getCliente()));
+        return response;
+    }
+
 }

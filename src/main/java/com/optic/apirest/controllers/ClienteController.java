@@ -5,10 +5,20 @@ import com.optic.apirest.dto.cliente.ClienteRequest;
 import com.optic.apirest.dto.cliente.ClienteResponse;
 import com.optic.apirest.services.ClienteService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controlador de Clientes con protección de permisos
+ * 
+ * Permisos requeridos:
+ * - READ_CLIENTS: Para listar y ver clientes
+ * - CREATE_CLIENTS: Para crear nuevos clientes
+ * - UPDATE_CLIENTS: Para actualizar clientes
+ * - DELETE_CLIENTS: Para eliminar clientes
+ */
 @RestController
 @RequestMapping("/api/clientes")
 public class ClienteController {
@@ -22,48 +32,90 @@ public class ClienteController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse> create(@RequestBody ClienteRequest request) {
+    public ResponseEntity<ApiResponse<ClienteResponse>> create(@RequestBody ClienteRequest request) {
         try {
-            clienteService.create(request);
-            return ResponseEntity.ok(new ApiResponse("Cliente creado exitosamente", 200));
+            ClienteResponse response =  clienteService.create(request);
+            return ResponseEntity.ok(ApiResponse.<ClienteResponse>builder()
+                    .success(true)
+                    .message("Cliente creado exitosamente")
+                    .data(response)
+                    .build());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new ApiResponse("Error al crear el cliente: " + e.getMessage(), 500));
+            return ResponseEntity.status(500).body(ApiResponse.<ClienteResponse>builder()
+                    .success(false)
+                    .message("Error al crear el cliente: " + e.getMessage())
+                    .build());
         }
     }
 
+    @PreAuthorize("hasAuthority('READ_CLIENTS')")
     @GetMapping("/{id}")
-    public ResponseEntity<ClienteResponse> findById(@PathVariable Long id){
-        ClienteResponse response = clienteService.findById(id);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping
-    public ResponseEntity<List<ClienteResponse>> findAll(@RequestParam(required = false) String query) {
-        List<ClienteResponse> response = clienteService.findAll(query);
-        return ResponseEntity.ok(response);
-    }
-
-    @PutMapping("/update/{id}")
-    public ResponseEntity<ApiResponse> update(@PathVariable Long id, @RequestBody ClienteRequest request) {
+    public ResponseEntity<ApiResponse<ClienteResponse>> findById(@PathVariable Long id){
         try {
-          clienteService.update(id, request);
-            return ResponseEntity.ok(new ApiResponse("Cliente actualizado exitosamente", 200));
+            ClienteResponse response = clienteService.findById(id);
+            return ResponseEntity.ok(ApiResponse.<ClienteResponse>builder()
+                    .success(true)
+                    .message("Cliente encontrado")
+                    .data(response)
+                    .build());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new ApiResponse("Error al actualizar el cliente: " + e.getMessage(), 500));
+            return ResponseEntity.status(400).body(ApiResponse.<ClienteResponse>builder()
+                    .success(false)
+                    .message(e.getMessage())
+                    .build());
+        }
+    }
+
+    @PreAuthorize("hasAuthority('READ_CLIENTS')")
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ClienteResponse>>> findAll(@RequestParam(required = false) String query) {
+        try {
+            List<ClienteResponse> response = clienteService.findAll(query);
+            return ResponseEntity.ok(ApiResponse.<List<ClienteResponse>>builder()
+                    .success(true)
+                    .message("Clientes encontrados")
+                    .data(response)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.<List<ClienteResponse>>builder()
+                    .success(false)
+                    .message("Error al listar clientes: " + e.getMessage())
+                    .build());
+        }
+    }
+
+        @PreAuthorize("hasAuthority('UPDATE_CLIENTS')")
+        @PutMapping("/update/{id}")
+        public ResponseEntity<ApiResponse<Void>> update(@PathVariable Long id, @RequestBody ClienteRequest request) {
+            try {
+                clienteService.update(id, request);
+                return ResponseEntity.ok(ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Cliente actualizado exitosamente")
+                        .build());
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .message("Error al actualizar el cliente: " + e.getMessage())
+                        .build());
+            }
         }
 
-    }
-
+    @PreAuthorize("hasAuthority('DELETE_CLIENTS')")
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<ApiResponse> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         try {
             clienteService.delete(id);
-            // Lógica para eliminar un cliente
-            return ResponseEntity.ok(new ApiResponse("Cliente eliminado exitosamente", 200));
+            return ResponseEntity.ok(ApiResponse.<Void>builder()
+                    .success(true)
+                    .message("Cliente eliminado exitosamente")
+                    .build());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new ApiResponse("Error al eliminar el cliente: " + e.getMessage(), 500));
+            return ResponseEntity.status(500).body(ApiResponse.<Void>builder()
+                    .success(false)
+                    .message("Error al eliminar el cliente: " + e.getMessage())
+                    .build());
         }
-
     }
 
 }
