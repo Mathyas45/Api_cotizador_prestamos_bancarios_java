@@ -6,6 +6,7 @@ import com.optic.apirest.dto.cliente.ClienteResponse;
 import com.optic.apirest.dto.cliente.mappers.ClienteMapper;
 import com.optic.apirest.models.Cliente;
 import com.optic.apirest.respositories.ClienteRepository;
+import com.optic.apirest.services.interfaces.IClienteService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,8 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 🎯 PRINCIPIOS SOLID APLICADOS:
+ * 
+ * ✅ SRP (Single Responsibility): Solo maneja lógica de clientes
+ * ✅ DIP (Dependency Inversion): Implementa IClienteService, depende de abstracciones
+ * ✅ OCP (Open/Closed): Abierto para extensión, cerrado para modificación
+ */
 @Service
-public class ClienteService {
+public class ClienteService implements IClienteService {
 
     private final ClienteRepository clienteRepository;
     private final ClienteMapper clienteMapper ;

@@ -1,6 +1,7 @@
 package com.optic.apirest.services;
 
 import com.optic.apirest.Client.TasaInteresApiClient;
+import com.optic.apirest.config.TasaInteresConfig;
 import com.optic.apirest.dto.SolicitudPrestamo.SolicitudPrestamoRequest;
 import com.optic.apirest.dto.SolicitudPrestamo.SolicitudPrestamoResponse;
 import com.optic.apirest.dto.SolicitudPrestamo.SolicitudPrestamoUpdate;
@@ -9,28 +10,42 @@ import com.optic.apirest.dto.apiValidarHistorial.ValidacionResponse;
 import com.optic.apirest.models.SolicitudPrestamo;
 import com.optic.apirest.respositories.ClienteRepository;
 import com.optic.apirest.respositories.SolicitudPrestamoRepository;
+import com.optic.apirest.services.interfaces.ISolicitudPrestamoService;
+import com.optic.apirest.utils.CalculadoraFinanciera;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-import static org.apache.el.lang.ELArithmetic.divide;
-
+/**
+ * 🎯 PRINCIPIOS SOLID APLICADOS:
+ * 
+ * ✅ SRP (Single Responsibility): Solo maneja lógica de solicitudes de préstamo
+ * ✅ DIP (Dependency Inversion): Implementa ISolicitudPrestamoService, depende de abstracciones
+ * ✅ OCP (Open/Closed): Usa TasaInteresConfig para configuración (extensible sin modificar)
+ */
 @Service
-public class SolicitudPrestamoService {
+public class SolicitudPrestamoService implements ISolicitudPrestamoService {
 
     private final SolicitudPrestamoRepository solicitudPrestamoRepository;
-    private  final SolicitudPrestamoMapper solicitudPrestamoMapper;
-    private  final TasaInteresApiClient tasaInteresApiClient;
-    private  final ClienteRepository clienteRepository;
+    private final SolicitudPrestamoMapper solicitudPrestamoMapper;
+    private final TasaInteresApiClient tasaInteresApiClient;
+    private final ClienteRepository clienteRepository;
+    private final TasaInteresConfig tasaInteresConfig; // 🎯 SOLID: Configuración centralizada
 
-    // Inyección por constructor (mejor práctica)
-    public SolicitudPrestamoService(SolicitudPrestamoRepository solicitudPrestamoRepository, SolicitudPrestamoMapper solicitudPrestamoMapper, TasaInteresApiClient tasaInteresApiClient, ClienteRepository clienteRepository) {
+    // Inyección por constructor (mejor práctica - Dependency Injection)
+    public SolicitudPrestamoService(
+            SolicitudPrestamoRepository solicitudPrestamoRepository,
+            SolicitudPrestamoMapper solicitudPrestamoMapper,
+            TasaInteresApiClient tasaInteresApiClient,
+            ClienteRepository clienteRepository,
+            TasaInteresConfig tasaInteresConfig) {
         this.solicitudPrestamoRepository = solicitudPrestamoRepository;
         this.solicitudPrestamoMapper = solicitudPrestamoMapper;
         this.tasaInteresApiClient = tasaInteresApiClient;
         this.clienteRepository = clienteRepository;
+        this.tasaInteresConfig = tasaInteresConfig;
     }
 
     @Transactional
@@ -72,36 +87,21 @@ public class SolicitudPrestamoService {
             return solicitudPrestamoMapper.toResponse(solicitud);
         }
 
-        // 5️⃣ Asignar tasa según riesgo, la operacion normal es: tasaInteresAnual =
-        BigDecimal tasaInteresAnual =
-                (riesgo == 1) ? BigDecimal.valueOf(7.5) :
-                        (riesgo == 2) ? BigDecimal.valueOf(8.5) :
-                                BigDecimal.valueOf(9.5);
+        // 5️⃣ Obtener tasa según riesgo desde configuración centralizada (SOLID: SRP)
+        BigDecimal tasaInteresAnual = tasaInteresConfig.obtenerTasaPorRiesgo(riesgo);
 
-        // 6️⃣ Cálculos financieros
-        BigDecimal monto = request.getMonto(); // Monto solicitado
-        BigDecimal porcentajeInicial = request.getPorcentajeCuotaInicial() // porcentaje inicial en decimal
-                .divide(BigDecimal.valueOf(100));
+        // 6️⃣ Cálculos financieros usando CalculadoraFinanciera (SOLID: SRP - código reutilizable)
+        CalculadoraFinanciera.ResultadoCalculo calculo = CalculadoraFinanciera.calcularTodo(
+                request.getMonto(),
+                request.getPorcentajeCuotaInicial(),
+                request.getPlazoAnios(),
+                tasaInteresAnual
+        );
 
-        BigDecimal montoCuotaInicial = monto.multiply(porcentajeInicial); // Monto de la cuota inicial
-        BigDecimal montoFinanciar = monto.subtract(montoCuotaInicial);// Monto a financiar
-
-        int plazoMeses = request.getPlazoAnios() * 12; // Plazo en meses
-
-        BigDecimal tasaMensual = tasaInteresAnual // Tasa de interés mensual
-                .divide(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(12));
-
-        // Fórmula francesa con BigDecimal correctamente implementada para calcular la cuota mensual: la formula normal para entenderlo seria :
-        BigDecimal unoMasTasa = BigDecimal.ONE.add(tasaMensual);
-        BigDecimal potencia = unoMasTasa.pow(plazoMeses);
-        BigDecimal divisor = BigDecimal.ONE.divide(potencia, 20, BigDecimal.ROUND_HALF_EVEN);
-        BigDecimal cuotaMensual = montoFinanciar.multiply(tasaMensual)
-                .divide(BigDecimal.ONE.subtract(divisor), 20, BigDecimal.ROUND_HALF_EVEN);
-
-        BigDecimal tcea = unoMasTasa.pow(12) // TCEA anual es la tasa efectiva anual es decir la tasa que realmente se paga en un año considerando la capitalización de intereses
-                .subtract(BigDecimal.ONE)
-                .multiply(BigDecimal.valueOf(100));
+        BigDecimal montoCuotaInicial = calculo.getMontoCuotaInicial();
+        BigDecimal montoFinanciar = calculo.getMontoFinanciar();
+        BigDecimal cuotaMensual = calculo.getCuotaMensual();
+        BigDecimal tcea = calculo.getTcea();
 
         // 7️⃣ Asignar cálculos
         solicitud.setTasaInteres(tasaInteresAnual);
@@ -162,35 +162,22 @@ public class SolicitudPrestamoService {
 
         }
 
-        // 3️⃣ Asignar tasa según riesgo
-        BigDecimal tasaInteresAnual =
-                (riesgo == 1) ? BigDecimal.valueOf(7.5) :
-                        (riesgo == 2) ? BigDecimal.valueOf(8.5) :
-                                BigDecimal.valueOf(9.5);
+        // 3️⃣ Obtener tasa según riesgo desde configuración centralizada (SOLID: SRP)
+        BigDecimal tasaInteresAnual = tasaInteresConfig.obtenerTasaPorRiesgo(riesgo);
 
-        // 4️⃣ Cálculos financieros
+        // 4️⃣ Cálculos financieros usando CalculadoraFinanciera (SOLID: código reutilizable)
+        CalculadoraFinanciera.ResultadoCalculo calculo = CalculadoraFinanciera.calcularTodo(
+                request.getMonto(),
+                request.getPorcentajeCuotaInicial(),
+                request.getPlazoAnios(),
+                tasaInteresAnual
+        );
+
         BigDecimal monto = request.getMonto();
-        BigDecimal porcentajeInicial = request.getPorcentajeCuotaInicial()
-                .divide(BigDecimal.valueOf(100));
-
-        BigDecimal montoCuotaInicial = monto.multiply(porcentajeInicial);
-        BigDecimal montoFinanciar = monto.subtract(montoCuotaInicial);
-
-        int plazoMeses = request.getPlazoAnios() * 12;
-
-        BigDecimal tasaMensual = tasaInteresAnual
-                .divide(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(12));
-
-        BigDecimal unoMasTasa = BigDecimal.ONE.add(tasaMensual);
-        BigDecimal potencia = unoMasTasa.pow(plazoMeses);
-        BigDecimal divisor = BigDecimal.ONE.divide(potencia, 20, BigDecimal.ROUND_HALF_EVEN);
-        BigDecimal cuotaMensual = montoFinanciar.multiply(tasaMensual)
-                .divide(BigDecimal.ONE.subtract(divisor), 20, BigDecimal.ROUND_HALF_EVEN);
-
-        BigDecimal tcea = unoMasTasa.pow(12)
-                .subtract(BigDecimal.ONE)
-                .multiply(BigDecimal.valueOf(100));
+        BigDecimal montoCuotaInicial = calculo.getMontoCuotaInicial();
+        BigDecimal montoFinanciar = calculo.getMontoFinanciar();
+        BigDecimal cuotaMensual = calculo.getCuotaMensual();
+        BigDecimal tcea = calculo.getTcea();
 
         // 5️⃣ Crear respuesta simulada
         solicitud.setMonto(monto);
@@ -243,41 +230,26 @@ public class SolicitudPrestamoService {
         // 2️⃣ Usar el riesgo YA guardado (no llamar API)
         Integer riesgo = solicitud.getRiesgoCliente();
 
-        // 3️⃣ Asignar la tasa según el riesgo
-        BigDecimal tasaInteresAnual =
-                (riesgo == 1) ? BigDecimal.valueOf(7.5) :
-                        (riesgo == 2) ? BigDecimal.valueOf(8.5) :
-                                BigDecimal.valueOf(9.5);
+        // 3️⃣ Obtener tasa según riesgo desde configuración centralizada (SOLID: SRP)
+        BigDecimal tasaInteresAnual = tasaInteresConfig.obtenerTasaPorRiesgo(riesgo);
 
         // 4️⃣ Actualizar campos modificables
         solicitud.setMonto(request.getMonto());
         solicitud.setPlazoAnios(request.getPlazoAnios());
         solicitud.setPorcentajeCuotaInicial(request.getPorcentajeCuotaInicial());
 
-        // 5️⃣ Recalcular valores financieros
-        BigDecimal monto = request.getMonto();
-        BigDecimal porcentajeInicial = request.getPorcentajeCuotaInicial()
-                .divide(BigDecimal.valueOf(100));//la operacion de dividir entre 100 es para convertir el porcentaje a decimal
+        // 5️⃣ Recalcular valores financieros usando CalculadoraFinanciera (SOLID: código reutilizable)
+        CalculadoraFinanciera.ResultadoCalculo calculo = CalculadoraFinanciera.calcularTodo(
+                request.getMonto(),
+                request.getPorcentajeCuotaInicial(),
+                request.getPlazoAnios(),
+                tasaInteresAnual
+        );
 
-        BigDecimal montoCuotaInicial = monto.multiply(porcentajeInicial);
-        BigDecimal montoFinanciar = monto.subtract(montoCuotaInicial);
-
-        int plazoMeses = request.getPlazoAnios() * 12;
-
-        BigDecimal tasaMensual = tasaInteresAnual
-                .divide(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(12));
-
-        BigDecimal unoMasTasa = BigDecimal.ONE.add(tasaMensual);
-        BigDecimal potencia = unoMasTasa.pow(plazoMeses);
-        BigDecimal divisor = BigDecimal.ONE.divide(potencia, 20, BigDecimal.ROUND_HALF_EVEN);
-
-        BigDecimal cuotaMensual = montoFinanciar.multiply(tasaMensual)
-                .divide(BigDecimal.ONE.subtract(divisor), 20, BigDecimal.ROUND_HALF_EVEN);
-
-        BigDecimal tcea = unoMasTasa.pow(12)
-                .subtract(BigDecimal.ONE)
-                .multiply(BigDecimal.valueOf(100));
+        BigDecimal montoCuotaInicial = calculo.getMontoCuotaInicial();
+        BigDecimal montoFinanciar = calculo.getMontoFinanciar();
+        BigDecimal cuotaMensual = calculo.getCuotaMensual();
+        BigDecimal tcea = calculo.getTcea();
 
         // 6️⃣ Guardar recalculos
         solicitud.setTasaInteres(tasaInteresAnual);
